@@ -13,7 +13,7 @@ PORT = 5555
 
 # Store clients and messages
 clients = []
-messages = [] 
+messages = []  # Stored as tuples: (username, encrypted_message)
 
 # Server's own username
 SERVER_USERNAME = "Server"
@@ -99,5 +99,44 @@ def start_server():
         client_thread = threading.Thread(target=handle_client, args=(client_socket, address))
         client_thread.start()
 
+def start_client():
+    """Start the chat client."""
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect((HOST, PORT))
+    print("Connected to the server!")
+
+    # Send username
+    username = input("Enter your name: ")
+    client.send(cipher.encrypt(username.encode("utf-8")))
+
+    def receive_messages():
+        while True:
+            try:
+                encrypted_message = client.recv(1024)
+                message = cipher.decrypt(encrypted_message).decode("utf-8")
+                print(message)
+            except:
+                print("Disconnected from the server.")
+                client.close()
+                break
+
+    # Start a thread to receive messages
+    threading.Thread(target=receive_messages, daemon=True).start()
+
+    # Send messages
+    while True:
+        message = input()
+        if message.lower() == "exit":
+            client.close()
+            break
+        encrypted_message = cipher.encrypt(message.encode("utf-8"))
+        client.send(encrypted_message)
+
 if __name__ == "__main__":
-    start_server()
+    mode = input("Enter 'server' to start as server or 'client' to start as client: ").strip().lower()
+    if mode == "server":
+        start_server()
+    elif mode == "client":
+        start_client()
+    else:
+        print("Invalid mode. Please enter 'server' or 'client'.")
